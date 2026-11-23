@@ -31,21 +31,28 @@ class BerkasPengajuanController extends Controller
             ], 422);
         }
 
+        // Validasi dua berkas wajib
         $validator = Validator::make($request->all(), [
-            'berkas' => ['required', 'array', 'min:1', 'max:10'],
-            'berkas.*' => [
+            'surat_rekomendasi' => [
                 'required',
                 'file',
                 'mimes:pdf,jpg,jpeg,png',
                 'max:2048',
             ],
-            'nama_berkas' => ['required', 'array', 'min:1', 'max:10'],
-            'nama_berkas.*' => ['required', 'string', 'max:255'],
+            'bukti_spp' => [
+                'required',
+                'file',
+                'mimes:pdf,jpg,jpeg,png',
+                'max:2048',
+            ],
         ], [
-            'berkas.required' => 'Berkas wajib diunggah.',
-            'berkas.*.mimes' => 'Format berkas harus PDF, JPG, JPEG, atau PNG.',
-            'berkas.*.max' => 'Ukuran setiap berkas maksimal 2 MB.',
-            'nama_berkas.required' => 'Nama berkas wajib diisi.',
+            'surat_rekomendasi.required' => 'Surat Rekomendasi wajib diunggah.',
+            'surat_rekomendasi.mimes' => 'Surat Rekomendasi harus berformat PDF, JPG, JPEG, atau PNG.',
+            'surat_rekomendasi.max' => 'Ukuran Surat Rekomendasi maksimal 2 MB.',
+
+            'bukti_spp.required' => 'Bukti Pembayaran SPP wajib diunggah.',
+            'bukti_spp.mimes' => 'Bukti Pembayaran SPP harus berformat PDF, JPG, JPEG, atau PNG.',
+            'bukti_spp.max' => 'Ukuran Bukti Pembayaran SPP maksimal 2 MB.',
         ]);
 
         if ($validator->fails()) {
@@ -56,42 +63,54 @@ class BerkasPengajuanController extends Controller
             ], 422);
         }
 
-        $files = $request->file('berkas');
-        $names = $request->input('nama_berkas');
+        // Cegah upload ulang jika berkas sudah tersedia
+        $existingFiles = BerkasPengajuan::where(
+            'pengajuan_id',
+            $pengajuan->id
+        )->whereIn('nama_berkas', [
+            'Surat Rekomendasi',
+            'Bukti Pembayaran SPP',
+        ])->exists();
 
-        if (count($files) !== count($names)) {
+        if ($existingFiles) {
             return response()->json([
                 'success' => false,
-                'message' => 'Jumlah nama berkas harus sama dengan jumlah file.',
+                'message' => 'Berkas pengajuan sudah pernah diunggah.',
             ], 422);
         }
+
+        $files = [
+            'Surat Rekomendasi' => $request->file('surat_rekomendasi'),
+            'Bukti Pembayaran SPP' => $request->file('bukti_spp'),
+        ];
 
         $storedPaths = [];
 
         try {
             $hasil = DB::transaction(function () use (
                 $files,
-                $names,
                 $pengajuan,
                 &$storedPaths
             ) {
                 $hasil = [];
 
-                foreach ($files as $index => $file) {
+                foreach ($files as $namaBerkas => $file) {
                     $path = $file->store(
                         "pengajuan/{$pengajuan->id}",
                         'public'
                     );
 
                     if (!$path) {
-                        throw new \RuntimeException('Gagal menyimpan berkas.');
+                        throw new \RuntimeException(
+                            'Gagal menyimpan berkas.'
+                        );
                     }
 
                     $storedPaths[] = $path;
 
                     $hasil[] = BerkasPengajuan::create([
                         'pengajuan_id' => $pengajuan->id,
-                        'nama_berkas' => $names[$index],
+                        'nama_berkas' => $namaBerkas,
                         'path_berkas' => $path,
                         'tipe_berkas' => $file->getMimeType(),
                         'ukuran_berkas' => $file->getSize(),
@@ -103,7 +122,7 @@ class BerkasPengajuanController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Berkas berhasil diunggah.',
+                'message' => 'Surat Rekomendasi dan Bukti Pembayaran SPP berhasil diunggah.',
                 'data' => $hasil,
             ], 201);
 
