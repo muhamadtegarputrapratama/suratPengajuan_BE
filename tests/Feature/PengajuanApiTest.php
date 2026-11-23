@@ -94,41 +94,50 @@ class PengajuanApiTest extends TestCase
         $response->assertStatus(422);
     }
 
-    public function test_upload_berkas_berhasil(): void
-    {
-        Storage::fake('public');
 
-        $pengajuan = Pengajuan::create([
-            'nim' => 'E1411234567',
-            'nama_mahasiswa' => 'Budi Santoso',
-            'departemen_id' => $this->departemen->id,
-            'status' => 'menunggu_verifikasi',
-        ]);
+public function test_upload_berkas_berhasil(): void
+{
+    Storage::fake('public');
 
-        $response = $this->post(
-            "/api/pengajuan/{$pengajuan->id}/berkas",
-            [
-                'nama_berkas' => ['Surat Rekomendasi'],
-                'berkas' => [
-                    UploadedFile::fake()->create(
-                        'surat.pdf',
-                        100,
-                        'application/pdf'
-                    ),
-                ],
-            ]
-        );
+    $pengajuan = Pengajuan::create([
+        'nim' => 'E1411234567',
+        'nama_mahasiswa' => 'Budi Santoso',
+        'departemen_id' => $this->departemen->id,
+        'status' => 'menunggu_verifikasi',
+    ]);
 
-        $response->assertCreated()
-            ->assertJsonPath('success', true);
+    $response = $this->post(
+        "/api/pengajuan/{$pengajuan->id}/berkas",
+        [
+            'surat_rekomendasi' => UploadedFile::fake()->create(
+                'surat_rekomendasi.pdf',
+                100,
+                'application/pdf'
+            ),
+            'bukti_spp' => UploadedFile::fake()->create(
+                'bukti_spp.pdf',
+                100,
+                'application/pdf'
+            ),
+        ]
+    );
 
-        $this->assertDatabaseHas('berkas_pengajuan', [
-            'pengajuan_id' => $pengajuan->id,
-            'nama_berkas' => 'Surat Rekomendasi',
-        ]);
+    $response->assertCreated()
+        ->assertJsonPath('success', true);
 
-        $this->assertCount(1, BerkasPengajuan::all());
-    }
+    $this->assertDatabaseHas('berkas_pengajuan', [
+        'pengajuan_id' => $pengajuan->id,
+        'nama_berkas' => 'Surat Rekomendasi',
+    ]);
+
+    $this->assertDatabaseHas('berkas_pengajuan', [
+        'pengajuan_id' => $pengajuan->id,
+        'nama_berkas' => 'Bukti Pembayaran SPP',
+    ]);
+
+    $this->assertDatabaseCount('berkas_pengajuan', 2);
+}
+
 
     public function test_upload_berkas_ke_pengajuan_tidak_ada_ditolak(): void
     {
