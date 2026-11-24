@@ -31,7 +31,7 @@ class BerkasPengajuanController extends Controller
             ], 422);
         }
 
-        // Validasi dua berkas wajib
+
         $validator = Validator::make($request->all(), [
             'surat_rekomendasi' => [
                 'required',
@@ -45,6 +45,12 @@ class BerkasPengajuanController extends Controller
                 'mimes:pdf,jpg,jpeg,png',
                 'max:2048',
             ],
+                'surat_permohonan_izin_penelitian' => [
+                'required',
+                'file',
+                'mimes:pdf,jpg,jpeg,png',
+                'max:2048',
+            ],
         ], [
             'surat_rekomendasi.required' => 'Surat Rekomendasi wajib diunggah.',
             'surat_rekomendasi.mimes' => 'Surat Rekomendasi harus berformat PDF, JPG, JPEG, atau PNG.',
@@ -53,6 +59,10 @@ class BerkasPengajuanController extends Controller
             'bukti_spp.required' => 'Bukti Pembayaran SPP wajib diunggah.',
             'bukti_spp.mimes' => 'Bukti Pembayaran SPP harus berformat PDF, JPG, JPEG, atau PNG.',
             'bukti_spp.max' => 'Ukuran Bukti Pembayaran SPP maksimal 2 MB.',
+
+            'surat_permohonan_izin_penelitian.required' => 'Surat Permohonan Izin Penelitian wajib diunggah.',
+            'surat_permohonan_izin_penelitian.mimes' => 'Surat Permohonan Izin Penelitian harus berformat PDF, JPG, JPEG, atau PNG.',
+            'surat_permohonan_izin_penelitian.max' => 'Ukuran Surat Permohonan Izin Penelitian maksimal 2 MB.',
         ]);
 
         if ($validator->fails()) {
@@ -70,6 +80,7 @@ class BerkasPengajuanController extends Controller
         )->whereIn('nama_berkas', [
             'Surat Rekomendasi',
             'Bukti Pembayaran SPP',
+            'Surat Permohonan Izin Penelitian',
         ])->exists();
 
         if ($existingFiles) {
@@ -82,6 +93,7 @@ class BerkasPengajuanController extends Controller
         $files = [
             'Surat Rekomendasi' => $request->file('surat_rekomendasi'),
             'Bukti Pembayaran SPP' => $request->file('bukti_spp'),
+            'Surat Permohonan Izin Penelitian' => $request->file('surat_permohonan_izin_penelitian'),
         ];
 
         $storedPaths = [];
@@ -122,7 +134,7 @@ class BerkasPengajuanController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Surat Rekomendasi dan Bukti Pembayaran SPP berhasil diunggah.',
+                'message' => 'Surat Rekomendasi, Bukti Pembayaran SPP, dan Surat Permohonan Izin Penelitian berhasil diunggah.',
                 'data' => $hasil,
             ], 201);
 
