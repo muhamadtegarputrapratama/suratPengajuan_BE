@@ -9,31 +9,48 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class AdminKpapTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function admin(string $role = User::ROLE_ADMIN_KPAP): User
-    {
-        $u = User::firstOrNew(['email' => "{$role}@test.com"]);
-        $u->forceFill(['name' => 'Tester', 'password' => 'password123', 'role' => $role])->save();
+   private function admin(string $role = User::ROLE_ADMIN_KPAP): User
+{
+    Role::findOrCreate($role, 'web');
 
-        return $u;
-    }
+    $user = User::firstOrCreate(
+        ['email' => "{$role}@test.com"],
+        [
+            'name' => 'Tester',
+            'password' => 'password123',
+        ]
+    );
 
-    private function pengajuan(string $status = Pengajuan::STATUS_MENUNGGU): Pengajuan
-    {
-        $dep = Departemen::create(['kode' => 'MNH', 'nama' => 'Manajemen Hutan', 'prefix_nim' => 'E141']);
+    $user->syncRoles([$role]);
 
-        return Pengajuan::create([
-            'nim' => 'E1410000001',
-            'nama_mahasiswa' => 'Budi',
-            'departemen_id' => $dep->id,
-            'status' => $status,
-        ]);
-    }
+    return $user;
+}
+
+private function pengajuan(
+    string $status = Pengajuan::STATUS_MENUNGGU
+): Pengajuan {
+    $dep = Departemen::firstOrCreate(
+        ['kode' => 'MNH'],
+        [
+            'nama' => 'Manajemen Hutan',
+            'prefix_nim' => 'E141',
+        ]
+    );
+
+    return Pengajuan::create([
+        'nim' => 'E1410000001',
+        'nama_mahasiswa' => 'Budi',
+        'departemen_id' => $dep->id,
+        'status' => $status,
+    ]);
+}
 
     public function test_login_hanya_untuk_admin_kpap(): void
     {

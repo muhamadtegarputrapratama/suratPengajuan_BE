@@ -36,8 +36,11 @@ class User extends Authenticatable
         return $this->belongsTo(Departemen::class);
     }
 
-    public function isAdminKpap(): bool
-    {
-        return $this->role === self::ROLE_ADMIN_KPAP;
-    }
+   public function isAdminKpap(): bool
+{
+    return $this->hasRole(
+        self::ROLE_ADMIN_KPAP,
+        'web'
+    );
+}
 }
