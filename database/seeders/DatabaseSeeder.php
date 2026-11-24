@@ -21,5 +21,6 @@ class DatabaseSeeder extends Seeder
             DepartemenSeeder::class,
             JenisPengajuanSeeder::class,
         ]);
+        $this->call(AdminKpapSeeder::class);
     }
 }
