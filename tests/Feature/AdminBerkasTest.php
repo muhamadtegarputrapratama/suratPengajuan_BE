@@ -16,14 +16,18 @@ class AdminBerkasTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_kpap_bisa_melihat_foto_berkas(): void
+    private function user(string $role): User
     {
-        Storage::fake('local');
-        config(['surat.berkas_disk' => 'local']);
+        $u = User::firstOrNew(['email' => "{$role}@test.com"]);
+        $u->forceFill(['name' => 'Tester', 'password' => 'password123', 'role' => $role])->save();
 
-        $admin = User::firstOrNew(['email' => 'kpap@test.com']);
-        $admin->forceFill(['name' => 'Admin', 'password' => 'password123', 'role' => User::ROLE_ADMIN_KPAP])->save();
-        Sanctum::actingAs($admin);
+        return $u;
+    }
+
+    private function berkas(): BerkasPengajuan
+    {
+        Storage::fake('public');
+        config(['surat.berkas_disk' => 'public']);
 
         $dep = Departemen::create(['kode' => 'MNH', 'nama' => 'Manajemen Hutan', 'prefix_nim' => 'E141']);
         $p = Pengajuan::create([
@@ -33,14 +37,41 @@ class AdminBerkasTest extends TestCase
             'status' => Pengajuan::STATUS_MENUNGGU,
         ]);
 
-        Storage::disk('local')->putFileAs('berkas', UploadedFile::fake()->image('surat.jpg'), 'surat.jpg');
-        $berkas = BerkasPengajuan::create([
-            'pengajuan_id' => $p->id,
-            'nama_berkas' => 'surat.jpg',
-            'path_berkas' => 'berkas/surat.jpg',
-        ]);
+        $path = UploadedFile::fake()->image('surat.jpg')->store("pengajuan/{$p->id}", 'public');
 
-        $this->get("/api/admin/berkas/{$berkas->id}/preview")->assertOk();
+        return BerkasPengajuan::create([
+            'pengajuan_id' => $p->id,
+            'nama_berkas' => 'Surat Rekomendasi',
+            'path_berkas' => $path,
+            'tipe_berkas' => 'image/jpeg',
+        ]);
+    }
+
+    public function test_admin_kpap_bisa_melihat_foto_berkas(): void
+    {
+        Sanctum::actingAs($this->user(User::ROLE_ADMIN_KPAP));
+        $berkas = $this->berkas();
+
+        $res = $this->get("/api/admin/berkas/{$berkas->id}/preview");
+
+        $this->assertSame(200, $res->getStatusCode(), 'Isi respons: ' . mb_substr($res->getContent(), 0, 500));
+        $this->assertStringStartsWith('image/', (string) $res->headers->get('Content-Type'));
+        $this->assertStringContainsString('inline', (string) $res->headers->get('Content-Disposition'));
+    }
+
+    public function test_berkas_tidak_ditemukan_menghasilkan_404(): void
+    {
+        Sanctum::actingAs($this->user(User::ROLE_ADMIN_KPAP));
+        $this->berkas();
+
         $this->getJson('/api/admin/berkas/9999/preview')->assertStatus(404);
+    }
+
+    public function test_bukan_admin_kpap_ditolak(): void
+    {
+        Sanctum::actingAs($this->user(User::ROLE_ADMIN_DEPARTEMEN));
+        $berkas = $this->berkas();
+
+        $this->getJson("/api/admin/berkas/{$berkas->id}/preview")->assertStatus(403);
     }
 }

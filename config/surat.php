@@ -48,8 +48,8 @@ return [
         // 'kode_permohonan_bantuan' => 'surat.permohonan-bantuan',
     ],
 
-    'disk' => 'local',
+    'disk' => 'public',
 
     // Disk tempat BerkasPengajuanController menyimpan upload foto. Kosong = disk default.
-    'berkas_disk' => env('BERKAS_DISK'),
+    'berkas_disk' => env('BERKAS_DISK', 'public'),
 ];

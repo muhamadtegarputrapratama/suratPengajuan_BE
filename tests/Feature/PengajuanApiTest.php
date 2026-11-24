@@ -114,7 +114,7 @@ class PengajuanApiTest extends TestCase
 
 
 
-    public function test_upload_berkas_berhasil(): void
+      public function test_upload_berkas_berhasil(): void
     {
         Storage::fake('public');
 
@@ -130,6 +130,11 @@ class PengajuanApiTest extends TestCase
                 ),
                 'bukti_spp' => UploadedFile::fake()->create(
                     'bukti_spp.pdf',
+                    100,
+                    'application/pdf'
+                ),
+                'surat_permohonan_izin_penelitian' => UploadedFile::fake()->create(
+                    'surat_permohonan_izin_penelitian.pdf',
                     100,
                     'application/pdf'
                 ),
@@ -149,7 +154,12 @@ class PengajuanApiTest extends TestCase
             'nama_berkas' => 'Bukti Pembayaran SPP',
         ]);
 
-        $this->assertDatabaseCount('berkas_pengajuan', 2);
+        $this->assertDatabaseHas('berkas_pengajuan', [
+            'pengajuan_id' => $pengajuan->id,
+            'nama_berkas' => 'Surat Permohonan Izin Penelitian',
+        ]);
+
+        $this->assertDatabaseCount('berkas_pengajuan', 3);
     }
 
     public function test_upload_berkas_ke_pengajuan_tidak_ada_ditolak(): void

@@ -32,7 +32,7 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $token = $user->createToken('admin-kpap')->plainTextToken;
+        $token = $user->createToken('admin_kpap')->plainTextToken;
 
         return response()->json([
             'success' => true,

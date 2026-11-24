@@ -16,41 +16,38 @@ class AdminKpapTest extends TestCase
 {
     use RefreshDatabase;
 
-   private function admin(string $role = User::ROLE_ADMIN_KPAP): User
-{
-    Role::findOrCreate($role, 'web');
+    private function admin(string $role = User::ROLE_ADMIN_KPAP): User
+    {
+        $user = new User([
+            'name' => 'Admin ' . $role,
+            'email' => $role . '@test.com',
+            'password' => bcrypt('password123'),
+        ]);
+        $user->forceFill(['role' => $role])->save();
 
-    $user = User::firstOrCreate(
-        ['email' => "{$role}@test.com"],
-        [
-            'name' => 'Tester',
-            'password' => 'password123',
-        ]
-    );
+        Role::findOrCreate($role);
+        $user->assignRole($role);
 
-    $user->syncRoles([$role]);
+        return $user;
+    }
 
-    return $user;
-}
+    private function pengajuan(string $status = Pengajuan::STATUS_MENUNGGU): Pengajuan
+    {
+        $dep = Departemen::firstOrCreate(
+            ['kode' => 'MNH'],
+            [
+                'nama' => 'Manajemen Hutan',
+                'prefix_nim' => 'E141',
+            ]
+        );
 
-private function pengajuan(
-    string $status = Pengajuan::STATUS_MENUNGGU
-): Pengajuan {
-    $dep = Departemen::firstOrCreate(
-        ['kode' => 'MNH'],
-        [
-            'nama' => 'Manajemen Hutan',
-            'prefix_nim' => 'E141',
-        ]
-    );
-
-    return Pengajuan::create([
-        'nim' => 'E1410000001',
-        'nama_mahasiswa' => 'Budi',
-        'departemen_id' => $dep->id,
-        'status' => $status,
-    ]);
-}
+        return Pengajuan::create([
+            'nim' => 'E1410000001',
+            'nama_mahasiswa' => 'Budi',
+            'departemen_id' => $dep->id,
+            'status' => $status,
+        ]);
+    }
 
     public function test_login_hanya_untuk_admin_kpap(): void
     {
@@ -103,7 +100,8 @@ private function pengajuan(
 
     public function test_isi_data_search_dan_generate_surat_pdf_docx(): void
     {
-        Storage::fake('local');
+        // Surat disimpan di disk 'public' (storage/app/public/surat/...)
+        Storage::fake('public');
         Sanctum::actingAs($this->admin());
         $p = $this->pengajuan(Pengajuan::STATUS_TERVERIFIKASI);
         $jenis = JenisPengajuan::create(['kode' => 'test', 'nama' => 'Surat Test', 'deskripsi' => 'x', 'is_active' => true]);
@@ -132,8 +130,8 @@ private function pengajuan(
         $this->assertSame(Pengajuan::STATUS_SURAT_DIBUAT, $p->fresh()->status);
 
         $suratId = $res->json('data.0.id');
-        Storage::disk('local')->assertExists($res->json('data.0.path_pdf'));
-        Storage::disk('local')->assertExists($res->json('data.0.path_docx'));
+        Storage::disk('public')->assertExists($res->json('data.0.path_pdf'));
+        Storage::disk('public')->assertExists($res->json('data.0.path_docx'));
 
         $this->get("/api/admin/surat/{$suratId}/download")->assertOk();
         $this->get("/api/admin/surat/{$suratId}/download/docx")->assertOk();

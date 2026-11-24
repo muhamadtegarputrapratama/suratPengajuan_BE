@@ -76,7 +76,7 @@ Route::middleware('throttle:pengajuan-public')->group(function () {
 Route::prefix('admin')->group(function () {
     Route::post('/login', [AdminAuthController::class, 'login'])->middleware('throttle:5,1');
 
-    Route::middleware(['auth:sanctum', 'role:admin_kpap'])->group(function () {
+    Route::middleware(['auth:sanctum', 'can:admin_kpap'])->group(function () {
         Route::post('/logout', [AdminAuthController::class, 'logout']);
         Route::get('/me', [AdminAuthController::class, 'me']);
 
