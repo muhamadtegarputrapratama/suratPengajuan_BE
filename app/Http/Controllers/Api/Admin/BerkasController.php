@@ -8,19 +8,38 @@ use Illuminate\Support\Facades\Storage;
 
 class BerkasController extends Controller
 {
-    /** GET /api/admin/berkas/{id}/preview  (foto/PDF ditampilkan inline) */
     public function preview(int $id)
-    {
-        $berkas = BerkasPengajuan::find($id);
-        $disk = Storage::disk(config('surat.berkas_disk') ?: config('filesystems.default'));
+{
+    $berkas = BerkasPengajuan::find($id);
 
-        if (!$berkas || !$disk->exists($berkas->path_berkas)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'File berkas tidak ditemukan.',
-            ], 404);
-        }
-
-        return $disk->response($berkas->path_berkas, $berkas->nama_berkas, [], 'inline');
+    if (!$berkas) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Data berkas tidak ditemukan.',
+        ], 404);
     }
+
+    $diskName = config('surat.berkas_disk')
+        ?: config('filesystems.default');
+
+    $disk = Storage::disk($diskName);
+
+    if (!$disk->exists($berkas->path_berkas)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'File berkas tidak ditemukan.',
+        ], 404);
+    }
+
+    $mimeType = $disk->mimeType($berkas->path_berkas);
+
+    return response()->file(
+        $disk->path($berkas->path_berkas),
+        [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' .
+                basename($berkas->path_berkas) . '"',
+        ]
+    );
+}
 }
