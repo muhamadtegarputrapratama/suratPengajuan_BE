@@ -6,7 +6,6 @@ use Tests\TestCase;
 use App\Models\Departemen;
 use App\Models\JenisPengajuan;
 use App\Models\Pengajuan;
-use App\Models\BerkasPengajuan;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -35,6 +34,8 @@ class PengajuanApiTest extends TestCase
             'is_active' => true,
         ]);
     }
+
+
 
     public function test_nim_valid_berhasil_dikenali(): void
     {
@@ -65,6 +66,8 @@ class PengajuanApiTest extends TestCase
         $response->assertStatus(404);
     }
 
+
+
     public function test_pengajuan_berhasil_dibuat(): void
     {
         $response = $this->postJson('/api/pengajuan', [
@@ -94,50 +97,60 @@ class PengajuanApiTest extends TestCase
         $response->assertStatus(422);
     }
 
+    public function test_jenis_pengajuan_nonaktif_ditolak(): void
+    {
+        $this->jenisPengajuan->update([
+            'is_active' => false,
+        ]);
 
-public function test_upload_berkas_berhasil(): void
-{
-    Storage::fake('public');
+        $response = $this->postJson('/api/pengajuan', [
+            'nim' => 'E1411234567',
+            'nama_mahasiswa' => 'Budi Santoso',
+            'jenis_pengajuan' => [$this->jenisPengajuan->id],
+        ]);
 
-    $pengajuan = Pengajuan::create([
-        'nim' => 'E1411234567',
-        'nama_mahasiswa' => 'Budi Santoso',
-        'departemen_id' => $this->departemen->id,
-        'status' => 'menunggu_verifikasi',
-    ]);
+        $response->assertStatus(422);
+    }
 
-    $response = $this->post(
-        "/api/pengajuan/{$pengajuan->id}/berkas",
-        [
-            'surat_rekomendasi' => UploadedFile::fake()->create(
-                'surat_rekomendasi.pdf',
-                100,
-                'application/pdf'
-            ),
-            'bukti_spp' => UploadedFile::fake()->create(
-                'bukti_spp.pdf',
-                100,
-                'application/pdf'
-            ),
-        ]
-    );
 
-    $response->assertCreated()
-        ->assertJsonPath('success', true);
 
-    $this->assertDatabaseHas('berkas_pengajuan', [
-        'pengajuan_id' => $pengajuan->id,
-        'nama_berkas' => 'Surat Rekomendasi',
-    ]);
+    public function test_upload_berkas_berhasil(): void
+    {
+        Storage::fake('public');
 
-    $this->assertDatabaseHas('berkas_pengajuan', [
-        'pengajuan_id' => $pengajuan->id,
-        'nama_berkas' => 'Bukti Pembayaran SPP',
-    ]);
+        $pengajuan = $this->buatPengajuan();
 
-    $this->assertDatabaseCount('berkas_pengajuan', 2);
-}
+        $response = $this->post(
+            "/api/pengajuan/{$pengajuan->id}/berkas",
+            [
+                'surat_rekomendasi' => UploadedFile::fake()->create(
+                    'surat_rekomendasi.pdf',
+                    100,
+                    'application/pdf'
+                ),
+                'bukti_spp' => UploadedFile::fake()->create(
+                    'bukti_spp.pdf',
+                    100,
+                    'application/pdf'
+                ),
+            ]
+        );
 
+        $response->assertCreated()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('berkas_pengajuan', [
+            'pengajuan_id' => $pengajuan->id,
+            'nama_berkas' => 'Surat Rekomendasi',
+        ]);
+
+        $this->assertDatabaseHas('berkas_pengajuan', [
+            'pengajuan_id' => $pengajuan->id,
+            'nama_berkas' => 'Bukti Pembayaran SPP',
+        ]);
+
+        $this->assertDatabaseCount('berkas_pengajuan', 2);
+    }
 
     public function test_upload_berkas_ke_pengajuan_tidak_ada_ditolak(): void
     {
@@ -149,62 +162,225 @@ public function test_upload_berkas_berhasil(): void
         $response->assertStatus(404);
     }
 
+    public function test_pengajuan_yang_sudah_terverifikasi_tidak_bisa_upload(): void
+    {
+        Storage::fake('public');
+
+        $pengajuan = $this->buatPengajuan([
+            'status' => 'terverifikasi',
+        ]);
+
+        $response = $this->post(
+            "/api/pengajuan/{$pengajuan->id}/berkas",
+            [
+                'nama_berkas' => ['Surat Rekomendasi'],
+                'berkas' => [
+                    UploadedFile::fake()->create(
+                        'surat.pdf',
+                        100,
+                        'application/pdf'
+                    ),
+                ],
+            ]
+        );
+
+        $response->assertStatus(422);
+    }
+
+
+
     public function test_daftar_departemen_berhasil_diakses(): void
-{
-    $response = $this->getJson('/api/departemen');
+    {
+        $response = $this->getJson('/api/departemen');
 
-    $response->assertOk()
-        ->assertJsonPath('success', true);
-}
+        $response->assertOk()
+            ->assertJsonPath('success', true);
+    }
 
-public function test_daftar_jenis_pengajuan_berhasil_diakses(): void
-{
-    $response = $this->getJson('/api/jenis-pengajuan');
+    public function test_daftar_jenis_pengajuan_berhasil_diakses(): void
+    {
+        $response = $this->getJson('/api/jenis-pengajuan');
 
-    $response->assertOk()
-        ->assertJsonPath('success', true);
-}
+        $response->assertOk()
+            ->assertJsonPath('success', true);
+    }
 
-public function test_jenis_pengajuan_nonaktif_ditolak(): void
-{
-    $this->jenisPengajuan->update([
-        'is_active' => false,
-    ]);
 
-    $response = $this->postJson('/api/pengajuan', [
-        'nim' => 'E1411234567',
-        'nama_mahasiswa' => 'Budi Santoso',
-        'jenis_pengajuan' => [$this->jenisPengajuan->id],
-    ]);
+    public function test_daftar_pengajuan_berhasil(): void
+    {
+        $this->buatPengajuan([
+            'nim' => 'E1411234567',
+            'nama_mahasiswa' => 'Budi Santoso',
+        ]);
 
-    $response->assertStatus(422);
-}
+        $this->buatPengajuan([
+            'nim' => 'E1411234568',
+            'nama_mahasiswa' => 'Andi Saputra',
+        ]);
 
-public function test_pengajuan_yang_sudah_terverifikasi_tidak_bisa_upload(): void
-{
-    Storage::fake('public');
+        $response = $this->getJson('/api/pengajuan?per_page=1');
 
-    $pengajuan = Pengajuan::create([
-        'nim' => 'E1411234567',
-        'nama_mahasiswa' => 'Budi Santoso',
-        'departemen_id' => $this->departemen->id,
-        'status' => 'terverifikasi',
-    ]);
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.total', 2)
+            ->assertJsonPath('data.per_page', 1);
+    }
 
-    $response = $this->post(
-        "/api/pengajuan/{$pengajuan->id}/berkas",
-        [
-            'nama_berkas' => ['Surat Rekomendasi'],
-            'berkas' => [
-                UploadedFile::fake()->create(
-                    'surat.pdf',
-                    100,
-                    'application/pdf'
-                ),
-            ],
-        ]
-    );
 
-    $response->assertStatus(422);
-}
+
+    public function test_detail_pengajuan_berhasil(): void
+    {
+        $pengajuan = $this->buatPengajuan([
+            'nim' => 'E1411234567',
+            'nama_mahasiswa' => 'Budi Santoso',
+        ]);
+
+        $response = $this->getJson(
+            "/api/pengajuan/{$pengajuan->id}"
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.nim', 'E1411234567')
+            ->assertJsonPath('data.nama_mahasiswa', 'Budi Santoso')
+            ->assertJsonPath('data.departemen.kode', 'MNH');
+    }
+
+    public function test_detail_pengajuan_tidak_ditemukan(): void
+    {
+        $response = $this->getJson('/api/pengajuan/999999');
+
+        $response->assertStatus(404)
+            ->assertJsonPath('success', false);
+    }
+
+
+
+    public function test_pencarian_pengajuan_berdasarkan_nim(): void
+    {
+        $this->buatPengajuan([
+            'nim' => 'E1411234567',
+            'nama_mahasiswa' => 'Budi Santoso',
+        ]);
+
+        $this->buatPengajuan([
+            'nim' => 'E1411234568',
+            'nama_mahasiswa' => 'Andi Saputra',
+        ]);
+
+        $response = $this->getJson(
+            '/api/pengajuan/search?q=E1411234567'
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.data.0.nim', 'E1411234567');
+    }
+
+    public function test_pencarian_pengajuan_berdasarkan_nama(): void
+    {
+        $this->buatPengajuan([
+            'nim' => 'E1411234567',
+            'nama_mahasiswa' => 'Budi Santoso',
+        ]);
+
+        $this->buatPengajuan([
+            'nim' => 'E1411234568',
+            'nama_mahasiswa' => 'Andi Saputra',
+        ]);
+
+        $response = $this->getJson(
+            '/api/pengajuan/search?q=Budi'
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.data.0.nama_mahasiswa', 'Budi Santoso');
+    }
+
+    public function test_pencarian_dengan_keyword_kosong_ditolak(): void
+    {
+        $response = $this->getJson(
+            '/api/pengajuan/search?q='
+        );
+
+        $response->assertStatus(422);
+    }
+
+
+
+    public function test_riwayat_pengajuan_berdasarkan_nim(): void
+    {
+        $this->buatPengajuan([
+            'nim' => 'E1411234567',
+            'nama_mahasiswa' => 'Budi Santoso',
+        ]);
+
+        $this->buatPengajuan([
+            'nim' => 'E1411234568',
+            'nama_mahasiswa' => 'Andi Saputra',
+        ]);
+
+        $response = $this->getJson(
+            '/api/riwayat-pengajuan?nim=E1411234567'
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.data.0.nim', 'E1411234567');
+    }
+
+    public function test_riwayat_tanpa_nim_ditolak(): void
+    {
+        $response = $this->getJson('/api/riwayat-pengajuan');
+
+        $response->assertStatus(422);
+    }
+
+
+    public function test_filter_pengajuan_berdasarkan_status(): void
+    {
+        $this->buatPengajuan([
+            'nim' => 'E1411234567',
+            'status' => 'menunggu_verifikasi',
+        ]);
+
+        $this->buatPengajuan([
+            'nim' => 'E1411234568',
+            'status' => 'terverifikasi',
+        ]);
+
+        $response = $this->getJson(
+            '/api/pengajuan?status=menunggu_verifikasi'
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath(
+                'data.data.0.status',
+                'menunggu_verifikasi'
+            );
+    }
+
+
+
+    private function buatPengajuan(array $data = []): Pengajuan
+    {
+        $pengajuan = Pengajuan::create(array_merge([
+            'nim' => 'E1411234567',
+            'nama_mahasiswa' => 'Budi Santoso',
+            'departemen_id' => $this->departemen->id,
+            'status' => 'menunggu_verifikasi',
+        ], $data));
+
+        $pengajuan->jenisPengajuans()->attach(
+            $this->jenisPengajuan->id
+        );
+
+        return $pengajuan;
+    }
 }

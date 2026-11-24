@@ -18,7 +18,12 @@ class PengajuanController extends Controller
             'nim' => ['required', 'string', 'regex:/^E[0-9]{10}$/'],
             'nama_mahasiswa' => ['required', 'string', 'max:255'],
             'jenis_pengajuan' => ['required', 'array', 'min:1'],
-            'jenis_pengajuan.*' => ['required', 'integer', 'distinct', 'exists:jenis_pengajuan,id'],
+            'jenis_pengajuan.*' => [
+                'required',
+                'integer',
+                'distinct',
+                'exists:jenis_pengajuan,id'
+            ],
         ], [
             'nim.regex' => 'NIM harus terdiri dari 11 karakter, diawali huruf E dan diikuti 10 angka.',
             'jenis_pengajuan.required' => 'Pilih minimal satu jenis pengajuan.',
@@ -36,7 +41,10 @@ class PengajuanController extends Controller
 
         $prefixNim = substr($request->nim, 0, 4);
 
-        $departemen = Departemen::where('prefix_nim', $prefixNim)->first();
+        $departemen = Departemen::where(
+            'prefix_nim',
+            $prefixNim
+        )->first();
 
         if (!$departemen) {
             return response()->json([
@@ -82,97 +90,173 @@ class PengajuanController extends Controller
         ], 201);
     }
 
-    public function index()
-{
-    $pengajuans = Pengajuan::with([
-        'departemen',
-        'jenisPengajuans',
-        'berkas',
-    ])
-    ->latest()
-    ->paginate(10);
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Daftar pengajuan berhasil diambil.',
-        'data' => $pengajuans,
-    ]);
-}
+    public function index(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'nim' => ['nullable', 'string', 'regex:/^E[0-9]{10}$/'],
+            'status' => [
+                'nullable',
+                'in:menunggu_verifikasi,terverifikasi,ditolak,surat_dibuat'
+            ],
+            'departemen_id' => [
+                'nullable',
+                'integer',
+                'exists:departemens,id'
+            ],
+            'jenis_pengajuan_id' => [
+                'nullable',
+                'integer',
+                'exists:jenis_pengajuan,id'
+            ],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
 
-public function show($id)
-{
-    $pengajuan = Pengajuan::with([
-        'departemen',
-        'jenisPengajuans',
-        'berkas',
-    ])->find($id);
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Parameter filter tidak valid.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
 
-    if (!$pengajuan) {
+        $query = Pengajuan::with([
+            'departemen',
+            'jenisPengajuans',
+            'berkas',
+        ]);
+
+        if ($request->filled('nim')) {
+            $query->where('nim', $request->nim);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('departemen_id')) {
+            $query->where(
+                'departemen_id',
+                $request->departemen_id
+            );
+        }
+
+        if ($request->filled('jenis_pengajuan_id')) {
+            $query->whereHas('jenisPengajuans', function ($q) use ($request) {
+                $q->where(
+                    'jenis_pengajuan.id',
+                    $request->jenis_pengajuan_id
+                );
+            });
+        }
+
+        $pengajuans = $query->latest()->paginate(
+            $request->input('per_page', 10)
+        );
+
         return response()->json([
-            'success' => false,
-            'message' => 'Pengajuan tidak ditemukan.',
-        ], 404);
+            'success' => true,
+            'message' => 'Daftar pengajuan berhasil diambil.',
+            'data' => $pengajuans,
+        ]);
     }
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Detail pengajuan berhasil diambil.',
-        'data' => $pengajuan,
-    ]);
-}
 
-public function filter(Request $request)
-{
-    $validator = Validator::make($request->all(), [
-        'nim' => ['nullable', 'string', 'regex:/^E[0-9]{10}$/'],
-        'status' => [
-            'nullable',
-            'in:menunggu_verifikasi,terverifikasi,ditolak,surat_dibuat'
-        ],
-        'departemen_id' => ['nullable', 'integer', 'exists:departemens,id'],
-        'jenis_pengajuan_id' => [
-            'nullable',
-            'integer',
-            'exists:jenis_pengajuan,id'
-        ],
-    ]);
+    public function show($id)
+    {
+        $pengajuan = Pengajuan::with([
+            'departemen',
+            'jenisPengajuans',
+            'berkas',
+        ])->find($id);
 
-    if ($validator->fails()) {
+        if (!$pengajuan) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pengajuan tidak ditemukan.',
+            ], 404);
+        }
+
         return response()->json([
-            'success' => false,
-            'message' => 'Filter tidak valid.',
-            'errors' => $validator->errors(),
-        ], 422);
+            'success' => true,
+            'message' => 'Detail pengajuan berhasil diambil.',
+            'data' => $pengajuan,
+        ]);
     }
 
-    $query = Pengajuan::with([
-        'departemen',
-        'jenisPengajuans',
-        'berkas',
-    ]);
 
-    if ($request->filled('nim')) {
-        $query->where('nim', 'like', '%' . $request->nim . '%');
+    public function search(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'q' => ['required', 'string', 'min:2', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Parameter pencarian tidak valid.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $keyword = trim($request->q);
+
+        $pengajuans = Pengajuan::with([
+            'departemen',
+            'jenisPengajuans',
+            'berkas',
+        ])
+        ->where(function ($query) use ($keyword) {
+            $query->where('nim', 'like', '%' . $keyword . '%')
+                ->orWhere(
+                    'nama_mahasiswa',
+                    'like',
+                    '%' . $keyword . '%'
+                );
+        })
+        ->latest()
+        ->paginate($request->input('per_page', 10));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Hasil pencarian pengajuan berhasil diambil.',
+            'data' => $pengajuans,
+        ]);
     }
 
-    if ($request->filled('status')) {
-        $query->where('status', $request->status);
-    }
 
-    if ($request->filled('departemen_id')) {
-        $query->where('departemen_id', $request->departemen_id);
-    }
+    public function riwayat(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'nim' => ['required', 'string', 'regex:/^E[0-9]{10}$/'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ], [
+            'nim.required' => 'NIM wajib diisi untuk melihat riwayat.',
+            'nim.regex' => 'Format NIM tidak valid.',
+        ]);
 
-    if ($request->filled('jenis_pengajuan_id')) {
-        $query->whereHas('jenisPengajuans', function ($q) use ($request) {
-            $q->where('jenis_pengajuan.id', $request->jenis_pengajuan_id);
-        });
-    }
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Parameter riwayat tidak valid.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Data pengajuan berhasil difilter.',
-        'data' => $query->latest()->paginate(10),
-    ]);
-}
+        $riwayat = Pengajuan::with([
+            'departemen',
+            'jenisPengajuans',
+            'berkas',
+        ])
+        ->where('nim', $request->nim)
+        ->latest()
+        ->paginate($request->input('per_page', 10));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Riwayat pengajuan berhasil diambil.',
+            'data' => $riwayat,
+        ]);
+    }
 }
