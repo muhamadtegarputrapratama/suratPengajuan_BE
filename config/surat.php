@@ -22,6 +22,11 @@ return [
         ],
     ],
 
+    // Logo kop surat, relatif terhadap folder public/. Kosongkan atau hapus file untuk tanpa logo.
+    'logo' => 'images/logo-ipb.png',
+    // Ornamen tepi kiri halaman, relatif terhadap folder public/. File tidak ada = tidak ditampilkan.
+    'ornamen_kiri' => 'images/ornamen-kiri.png',
+
     /*
      * Penandatangan surat. Diisi lewat .env (SURAT_TTD_*), nilai di bawah hanya cadangan.
      * Tampil di PDF (view surat/_ttd) dan Word (SuratDocxGenerator).

@@ -36,4 +36,63 @@ class SuratFormat
             default => 'skripsi',
         };
     }
+
+    /** Path gambar di folder public/ (mencoba png/jpg/jpeg bila ekstensi beda), atau null. */
+    public static function gambarPath(?string $relatif): ?string
+    {
+        if (!$relatif) {
+            return null;
+        }
+
+        $path = public_path($relatif);
+
+        if (is_file($path)) {
+            return $path;
+        }
+
+        $dasar = pathinfo($path, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . pathinfo($path, PATHINFO_FILENAME);
+
+        foreach (['png', 'jpg', 'jpeg'] as $ext) {
+            if (is_file("{$dasar}.{$ext}")) {
+                return "{$dasar}.{$ext}";
+            }
+        }
+
+        return null;
+    }
+
+    /** Gambar sebagai data URI (aman dipakai DomPDF), atau null. */
+    public static function gambarDataUri(?string $path): ?string
+    {
+        if (!$path || !is_file($path)) {
+            return null;
+        }
+
+        $mime = match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            default => 'image/png',
+        };
+
+        return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($path));
+    }
+
+    public static function logoPath(): ?string
+    {
+        return self::gambarPath(config('surat.logo'));
+    }
+
+    public static function logoDataUri(): ?string
+    {
+        return self::gambarDataUri(self::logoPath());
+    }
+
+    public static function ornamenKiriPath(): ?string
+    {
+        return self::gambarPath(config('surat.ornamen_kiri'));
+    }
+
+    public static function ornamenKiriDataUri(): ?string
+    {
+        return self::gambarDataUri(self::ornamenKiriPath());
+    }
 }

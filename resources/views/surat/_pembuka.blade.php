@@ -1,4 +1,4 @@
-<table width="100%" style="margin-bottom: 14px;">
+<table width="100%" style="margin-bottom: 16px;">
     <tr>
         <td width="62%">
             <div>Nomor : {{ $nomor }}</div>
@@ -10,13 +10,13 @@
 
 <p>
     Yth. <b>{{ $instansi?->nama_instansi ?? '-' }}</b><br>
-    <span style="padding-left: 22px; display: block;"><b>{!! nl2br(e((string) $instansi?->alamat_instansi)) !!}</b></span>
+    <span style="padding-left: 24px; display: block;"><b>{!! nl2br(e((string) $instansi?->alamat_instansi)) !!}</b></span>
 </p>
 
 <p>Disampaikan dengan hormat bahwa mahasiswa Fakultas Kehutanan dan Lingkungan Institut Pertanian Bogor :</p>
 
-<table class="identitas" style="margin: 0 0 10px 40px;">
-    <tr><td width="130">Nama</td><td width="14">:</td><td><b>{{ mb_strtoupper($pengajuan->nama_mahasiswa) }}</b></td></tr>
+<table class="identitas" style="margin: 0 0 12px 44px;">
+    <tr><td width="150">Nama</td><td width="16">:</td><td><b>{{ mb_strtoupper($pengajuan->nama_mahasiswa) }}</b></td></tr>
     <tr><td>NIM</td><td>:</td><td>{{ $pengajuan->nim }}</td></tr>
     <tr><td>Program</td><td>:</td><td>{{ $pengajuan->program ?? '-' }}</td></tr>
     <tr><td>Departemen</td><td>:</td><td>{{ $pengajuan->departemen->nama }}</td></tr>

@@ -32,7 +32,8 @@ class SuratDocxGenerator
 
         $word = new PhpWord();
         $word->setDefaultFontName('Arial');
-        $word->setDefaultFontSize(11);
+        $word->setDefaultFontSize(12);
+        $word->setDefaultParagraphStyle(['spaceAfter' => 160]);
 
         $section = $word->addSection([
             'marginTop' => 1000,
@@ -40,6 +41,8 @@ class SuratDocxGenerator
             'marginLeft' => 1250,
             'marginRight' => 1250,
         ]);
+
+        $this->ornamenKiri($section);
 
         $section->addFooter()->addText(
             config('surat.tagline'),
@@ -115,7 +118,7 @@ class SuratDocxGenerator
         foreach (config('surat.penandatangan.jabatan') as $baris) {
             $section->addText($baris, [], $kanan);
         }
-        $section->addTextBreak(3);
+        $section->addTextBreak(4);
         $section->addText(config('surat.penandatangan.nama'), [], $kanan);
         $section->addText('NIP. ' . config('surat.penandatangan.nip'), [], $kanan);
 
@@ -133,20 +136,68 @@ class SuratDocxGenerator
         return $isi;
     }
 
+    /** Ornamen tepi kiri: gambar melayang di belakang teks, ditaruh di header agar muncul di tiap halaman. */
+    private function ornamenKiri(Section $section): void
+    {
+        $path = SuratFormat::ornamenKiriPath();
+
+        if (!$path) {
+            return;
+        }
+
+        try {
+            $ukuran = @getimagesize($path);
+
+            if (!$ukuran || $ukuran[0] < 1 || $ukuran[1] < 1) {
+                return;
+            }
+
+            $tinggi = 842.0; // tinggi A4 dalam point
+            $lebar = $tinggi * $ukuran[0] / $ukuran[1];
+
+            if ($lebar > 200) { // bukan strip tipis: batasi lebarnya
+                $lebar = 200.0;
+                $tinggi = $lebar * $ukuran[1] / $ukuran[0];
+            }
+
+            $section->addHeader()->addImage($path, [
+                'width' => $lebar,
+                'height' => $tinggi,
+                'positioning' => 'absolute',
+                'posHorizontal' => 'left',
+                'posHorizontalRel' => 'page',
+                'posVertical' => 'top',
+                'posVerticalRel' => 'page',
+                'wrappingStyle' => 'behind',
+            ]);
+        } catch (\Throwable $e) {
+            report($e); // gagal memasang ornamen tidak boleh menggagalkan pembuatan surat
+        }
+    }
+
     private function kop(Section $section): void
     {
         $kop = config('surat.kop');
         $rapat = ['spaceAfter' => 0];
+        $logo = SuratFormat::logoPath();
 
         $table = $section->addTable();
         $row = $table->addRow();
 
-        $kiri = $row->addCell(6000, ['borderRightSize' => 6, 'borderRightColor' => '999999']);
-        $kiri->addText($kop['kementerian'], ['bold' => true, 'size' => 9], $rapat);
-        $kiri->addText($kop['universitas'], ['bold' => true, 'size' => 18], $rapat);
-        $kiri->addText($kop['fakultas'], ['size' => 11, 'color' => '444444'], $rapat);
+        if ($logo) {
+            $tinggi = 52;
+            $ukuran = @getimagesize($logo);
+            $lebar = $ukuran ? $tinggi * $ukuran[0] / max($ukuran[1], 1) : $tinggi;
 
-        $kanan = $row->addCell(3500);
+            $row->addCell(1100)->addImage($logo, ['height' => $tinggi, 'width' => $lebar]);
+        }
+
+        $kiri = $row->addCell($logo ? 5000 : 6000, ['borderRightSize' => 6, 'borderRightColor' => '999999']);
+        $kiri->addText($kop['kementerian'], ['bold' => true, 'size' => 9], $rapat);
+        $kiri->addText($kop['universitas'], ['bold' => true, 'size' => 20], $rapat);
+        $kiri->addText($kop['fakultas'], ['size' => 11, 'color' => '555555'], $rapat);
+
+        $kanan = $row->addCell($logo ? 3300 : 3500);
         foreach ($kop['kontak'] as $baris) {
             $kanan->addText($baris, ['size' => 9], ['spaceAfter' => 0, 'indentation' => ['left' => 200]]);
         }
