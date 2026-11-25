@@ -227,36 +227,31 @@ class PengajuanController extends Controller
 
 
     public function riwayat(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'nim' => ['required', 'string', 'regex:/^E[0-9]{10}$/'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
-        ], [
-            'nim.required' => 'NIM wajib diisi untuk melihat riwayat.',
-            'nim.regex' => 'Format NIM tidak valid.',
-        ]);
+{
+    $validator = Validator::make($request->all(), [
+        'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Parameter riwayat tidak valid.',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $riwayat = Pengajuan::with([
-            'departemen',
-            'jenisPengajuans',
-            'berkas',
-        ])
-        ->where('nim', $request->nim)
-        ->latest()
-        ->paginate($request->input('per_page', 10));
-
+    if ($validator->fails()) {
         return response()->json([
-            'success' => true,
-            'message' => 'Riwayat pengajuan berhasil diambil.',
-            'data' => $riwayat,
-        ]);
+            'success' => false,
+            'message' => 'Parameter riwayat tidak valid.',
+            'errors' => $validator->errors(),
+        ], 422);
     }
+
+    $riwayat = Pengajuan::with([
+        'departemen',
+        'jenisPengajuans',
+        'berkas',
+    ])
+    ->latest()
+    ->paginate($request->input('per_page', 10));
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Riwayat seluruh pengajuan berhasil diambil.',
+        'data' => $riwayat,
+    ]);
+}
 }
