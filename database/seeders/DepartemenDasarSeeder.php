@@ -11,7 +11,7 @@ class DepartemenDasarSeeder extends Seeder
     {
         $daftar = [
             ['prefix_nim' => 'E141', 'kode' => 'MNH', 'nama' => 'Manajemen Hutan'],
-            ['prefix_nim' => 'E241', 'kode' => 'THH', 'nama' => 'Hasil Hutan'],
+            ['prefix_nim' => 'E241', 'kode' => 'HH', 'nama' => 'Hasil Hutan'],
             ['prefix_nim' => 'E341', 'kode' => 'KSHE', 'nama' => 'Konservasi Sumberdaya Hutan dan Ekowisata'],
             ['prefix_nim' => 'E441', 'kode' => 'SVK', 'nama' => 'Silvikultur'],
         ];

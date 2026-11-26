@@ -30,7 +30,7 @@ class AdminDepartemenSeederTest extends TestCase
     {
         foreach ([
             ['MNH', 'Manajemen Hutan', 'E141'],
-            ['THH', 'Hasil Hutan', 'E241'],
+            ['HH', 'Hasil Hutan', 'E241'],
             ['KSHE', 'Konservasi Sumberdaya Hutan dan Ekowisata', 'E341'],
             ['SVK', 'Silvikultur', 'E441'],
         ] as [$kode, $nama, $prefix]) {
