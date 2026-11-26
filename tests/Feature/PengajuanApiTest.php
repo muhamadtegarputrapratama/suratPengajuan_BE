@@ -9,6 +9,8 @@ use App\Models\Pengajuan;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use App\Models\User;
+use Laravel\Sanctum\Sanctum;
 
 class PengajuanApiTest extends TestCase
 {
@@ -17,7 +19,7 @@ class PengajuanApiTest extends TestCase
     protected $departemen;
     protected $jenisPengajuan;
 
-    protected function setUp(): void
+        protected function setUp(): void
     {
         parent::setUp();
 
@@ -33,9 +35,19 @@ class PengajuanApiTest extends TestCase
             'deskripsi' => 'Pengajuan surat penelitian.',
             'is_active' => true,
         ]);
+
+        // Semua route kini wajib login: masuk sebagai admin departemen MNH.
+        $akun = new User();
+        $akun->forceFill([
+            'name' => 'Admin MNH',
+            'email' => 'admin.mnh@test.com',
+            'password' => 'rahasia-123',
+            'role' => User::ROLE_ADMIN_DEPARTEMEN,
+            'departemen_id' => $this->departemen->id,
+        ])->save();
+
+        Sanctum::actingAs($akun);
     }
-
-
 
     public function test_nim_valid_berhasil_dikenali(): void
     {

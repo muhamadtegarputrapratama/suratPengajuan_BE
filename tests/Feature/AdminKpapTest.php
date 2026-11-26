@@ -9,7 +9,6 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class AdminKpapTest extends TestCase
@@ -18,28 +17,15 @@ class AdminKpapTest extends TestCase
 
     private function admin(string $role = User::ROLE_ADMIN_KPAP): User
     {
-        $user = new User([
-            'name' => 'Admin ' . $role,
-            'email' => $role . '@test.com',
-            'password' => bcrypt('password123'),
-        ]);
-        $user->forceFill(['role' => $role])->save();
+        $u = User::firstOrNew(['email' => "{$role}@test.com"]);
+        $u->forceFill(['name' => 'Tester', 'password' => 'password123', 'role' => $role])->save();
 
-        Role::findOrCreate($role);
-        $user->assignRole($role);
-
-        return $user;
+        return $u;
     }
 
     private function pengajuan(string $status = Pengajuan::STATUS_MENUNGGU): Pengajuan
     {
-        $dep = Departemen::firstOrCreate(
-            ['kode' => 'MNH'],
-            [
-                'nama' => 'Manajemen Hutan',
-                'prefix_nim' => 'E141',
-            ]
-        );
+        $dep = Departemen::create(['kode' => 'MNH', 'nama' => 'Manajemen Hutan', 'prefix_nim' => 'E141']);
 
         return Pengajuan::create([
             'nim' => 'E1410000001',
@@ -100,8 +86,7 @@ class AdminKpapTest extends TestCase
 
     public function test_isi_data_search_dan_generate_surat_pdf_docx(): void
     {
-        // Surat disimpan di disk 'public' (storage/app/public/surat/...)
-        Storage::fake('public');
+        Storage::fake('local');
         Sanctum::actingAs($this->admin());
         $p = $this->pengajuan(Pengajuan::STATUS_TERVERIFIKASI);
         $jenis = JenisPengajuan::create(['kode' => 'test', 'nama' => 'Surat Test', 'deskripsi' => 'x', 'is_active' => true]);
@@ -130,8 +115,8 @@ class AdminKpapTest extends TestCase
         $this->assertSame(Pengajuan::STATUS_SURAT_DIBUAT, $p->fresh()->status);
 
         $suratId = $res->json('data.0.id');
-        Storage::disk('public')->assertExists($res->json('data.0.path_pdf'));
-        Storage::disk('public')->assertExists($res->json('data.0.path_docx'));
+        Storage::disk('local')->assertExists($res->json('data.0.path_pdf'));
+        Storage::disk('local')->assertExists($res->json('data.0.path_docx'));
 
         $this->get("/api/admin/surat/{$suratId}/download")->assertOk();
         $this->get("/api/admin/surat/{$suratId}/download/docx")->assertOk();

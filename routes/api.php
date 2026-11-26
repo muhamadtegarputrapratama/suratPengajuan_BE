@@ -1,82 +1,45 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\MahasiswaController;
-use App\Http\Controllers\Api\PengajuanController;
-use App\Http\Controllers\Api\BerkasPengajuanController;
-use App\Http\Controllers\Api\MasterDataController;
 use App\Http\Controllers\Api\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Api\Admin\BerkasController as AdminBerkasController;
 use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Api\Admin\PengajuanController as AdminPengajuanController;
+use App\Http\Controllers\Api\Admin\RiwayatController as AdminRiwayatController;
 use App\Http\Controllers\Api\Admin\SuratController as AdminSuratController;
 use App\Http\Controllers\Api\Admin\VerifikasiController as AdminVerifikasiController;
+use App\Http\Controllers\Api\LoginController;
+use Illuminate\Support\Facades\Route;
 
+/*
+|--------------------------------------------------------------------------
+| Satu-satunya route tanpa token: login
+|--------------------------------------------------------------------------
+*/
+Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:10,1');
 
-Route::get('/departemen', [
-    MasterDataController::class,
-    'departemen'
-]);
+/*
+|--------------------------------------------------------------------------
+| Semua route di bawah ini WAJIB login (header Authorization: Bearer <token>)
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [LoginController::class, 'logout']);
+    Route::get('/me', [LoginController::class, 'me']);
 
-Route::get('/jenis-pengajuan', [
-    MasterDataController::class,
-    'jenisPengajuan'
-]);
-
-
-
-
-Route::middleware('throttle:pengajuan-public')->group(function () {
-
-
-    Route::post('/cari-mahasiswa', [
-        MahasiswaController::class,
-        'cari'
-    ]);
-
-
-    Route::post('/pengajuan', [
-        PengajuanController::class,
-        'store'
-    ]);
-
-
-    Route::post('/pengajuan/{id}/berkas', [
-        BerkasPengajuanController::class,
-        'store'
-    ]);
-
-
-    Route::get('/pengajuan/search', [
-        PengajuanController::class,
-        'search'
-    ]);
-
-
-    Route::get('/riwayat-pengajuan', [
-        PengajuanController::class,
-        'riwayat'
-    ]);
-
-
-    Route::get('/pengajuan', [
-        PengajuanController::class,
-        'index'
-    ]);
-
-
-    Route::get('/pengajuan/{id}', [
-        PengajuanController::class,
-        'show'
-    ])->whereNumber('id');
-
+    // Route BE 1 (pengajuan, upload berkas, pencarian, riwayat, data master).
+    // Datanya otomatis dibatasi per departemen oleh scope di model Pengajuan.
+    require base_path('routes/pengajuan.php');
 });
 
-
+/*
+|--------------------------------------------------------------------------
+| Admin KPAP
+|--------------------------------------------------------------------------
+*/
 Route::prefix('admin')->group(function () {
     Route::post('/login', [AdminAuthController::class, 'login'])->middleware('throttle:5,1');
 
-    Route::middleware(['auth:sanctum', 'can:admin_kpap'])->group(function () {
+    Route::middleware(['auth:sanctum', 'can:admin-kpap'])->group(function () {
         Route::post('/logout', [AdminAuthController::class, 'logout']);
         Route::get('/me', [AdminAuthController::class, 'me']);
 
@@ -87,6 +50,9 @@ Route::prefix('admin')->group(function () {
         Route::get('/pengajuan/{id}', [AdminPengajuanController::class, 'show']);
         Route::put('/pengajuan/{id}/data', [AdminPengajuanController::class, 'updateData']);
         Route::get('/pengajuan/{id}/riwayat', [AdminPengajuanController::class, 'riwayat']);
+
+        Route::get('/riwayat', [AdminRiwayatController::class, 'index']);
+        Route::get('/riwayat/{id}', [AdminRiwayatController::class, 'show']);
 
         Route::get('/berkas/{id}/preview', [AdminBerkasController::class, 'preview']);
 

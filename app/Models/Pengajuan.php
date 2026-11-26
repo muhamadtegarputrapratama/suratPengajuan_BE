@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -42,6 +43,22 @@ class Pengajuan extends Model
         'program',
         'bentuk_bantuan',
     ];
+
+    /**
+     * Admin departemen hanya boleh melihat/mengubah pengajuan departemennya sendiri.
+     * Berlaku otomatis di semua query model ini; Admin KPAP, seeder, dan console tidak terpengaruh.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('departemen_pengguna', function (Builder $query) {
+            $user = auth('sanctum')->user();
+
+            if ($user && $user->role === User::ROLE_ADMIN_DEPARTEMEN) {
+                // departemen_id kosong => tidak melihat apa pun (aman secara default)
+                $query->where($query->getModel()->getTable() . '.departemen_id', $user->departemen_id ?? 0);
+            }
+        });
+    }
 
     protected function casts(): array
     {

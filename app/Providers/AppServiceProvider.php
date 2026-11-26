@@ -22,8 +22,8 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by($request->ip());
         });
 
-        // Hak akses Admin KPAP
-        Gate::define('admin_kpap', function (User $user) {
+        // Hak akses Admin KPAP (dipakai di route lewat middleware "can:admin-kpap")
+        Gate::define('admin-kpap', function (User $user) {
             return $user->role === User::ROLE_ADMIN_KPAP;
         });
     }

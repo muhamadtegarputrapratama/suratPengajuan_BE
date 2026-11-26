@@ -10,6 +10,10 @@ return [
     'kota' => 'Bogor',
     'tagline' => 'Inspiring Innovation with Integrity',
 
+    // Gambar kop, relatif terhadap folder public/. File tidak ada = tidak ditampilkan (surat tetap jadi).
+    'logo' => 'images/logo-ipb.png',
+    'ornamen_kiri' => 'images/ornamen-kiri.png',
+
     'kop' => [
         'kementerian' => 'KEMENTERIAN PENDIDIKAN TINGGI, SAINS, DAN TEKNOLOGI',
         'universitas' => 'INSTITUT PERTANIAN BOGOR',
@@ -22,15 +26,7 @@ return [
         ],
     ],
 
-    // Logo kop surat, relatif terhadap folder public/. Kosongkan atau hapus file untuk tanpa logo.
-    'logo' => 'images/logo-ipb.png',
-    // Ornamen tepi kiri halaman, relatif terhadap folder public/. File tidak ada = tidak ditampilkan.
-    'ornamen_kiri' => 'images/ornamen-kiri.png',
-
-    /*
-     * Penandatangan surat. Diisi lewat .env (SURAT_TTD_*), nilai di bawah hanya cadangan.
-     * Tampil di PDF (view surat/_ttd) dan Word (SuratDocxGenerator).
-     */
+    // Penandatangan: diisi lewat .env (SURAT_TTD_*), nilai di sini hanya cadangan.
     'penandatangan' => [
         'jabatan' => array_values(array_filter([
             env('SURAT_TTD_JABATAN_1', 'Wakil Dekan'),
@@ -48,15 +44,13 @@ return [
      * Pilihan view: 'surat.izin-penelitian' atau 'surat.permohonan-bantuan'.
      * GANTI kunci di bawah dengan kode asli dari seeder.
      */
-   'template' => [
-    'PERMOHONAN_BANTUAN' => 'surat.permohonan-bantuan',
-    'PERMOHONAN_IZIN_PRAKTIK_KHUSUS' => 'surat.izin-penelitian',
-    'PENJAJAGAN' => 'surat.izin-penelitian',
-    'TUGAS_JALAN' => 'surat.izin-penelitian',
-],
+    'template' => [
+        // 'kode_izin_penelitian' => 'surat.izin-penelitian',
+        // 'kode_permohonan_bantuan' => 'surat.permohonan-bantuan',
+    ],
 
-    'disk' => 'public',
+    'disk' => 'local',
 
-    // Disk tempat BerkasPengajuanController menyimpan upload foto. Kosong = disk default.
-    'berkas_disk' => env('BERKAS_DISK', 'public'),
+    // Disk tempat BerkasPengajuanController (BE 1) menyimpan upload: disk "public".
+    'berkas_disk' => env('BERKAS_DISK', 'local'),
 ];

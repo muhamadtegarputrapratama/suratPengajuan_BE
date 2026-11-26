@@ -4,21 +4,32 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 
 class AdminKpapSeeder extends Seeder
 {
     public function run(): void
     {
-        $user = User::firstOrNew(['email' => env('ADMIN_KPAP_EMAIL', 'kpap@example.com')]);
+        $email = config('akun.kpap.email');
+        $password = config('akun.kpap.password');
 
-        $user->forceFill([
-            'name' => 'Admin KPAP',
-            'password' => env('ADMIN_KPAP_PASSWORD', 'ganti-password-ini'),
-            'role' => User::ROLE_ADMIN_KPAP,
-        ])->save();
+        if (blank($email) || blank($password)) {
+            $this->command?->error('Isi ADMIN_KPAP_EMAIL dan ADMIN_KPAP_PASSWORD di .env dulu, lalu jalankan php artisan config:clear.');
 
-        Role::findOrCreate(User::ROLE_ADMIN_KPAP, 'web');
-        $user->assignRole(User::ROLE_ADMIN_KPAP);
+            return;
+        }
+
+        $user = User::firstOrNew(['email' => $email]);
+
+        $user->name = 'Admin KPAP';
+        $user->role = User::ROLE_ADMIN_KPAP;
+
+        // Password hanya diisi untuk akun baru; menjalankan seeder lagi tidak mereset password.
+        if (!$user->exists) {
+            $user->password = $password;
+        }
+
+        $user->save();
+
+        $this->command?->info(($user->wasRecentlyCreated ? 'Dibuat    : ' : 'Diperbarui: ') . $email);
     }
 }

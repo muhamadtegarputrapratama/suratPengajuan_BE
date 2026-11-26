@@ -11,14 +11,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'role', 'departemen_id'])]
+#[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable, HasRoles;
+    use HasApiTokens, HasFactory, Notifiable;
 
     public const ROLE_ADMIN_DEPARTEMEN = 'admin_departemen';
     public const ROLE_ADMIN_KPAP = 'admin_kpap';
@@ -36,11 +35,8 @@ class User extends Authenticatable
         return $this->belongsTo(Departemen::class);
     }
 
-   public function isAdminKpap(): bool
-{
-    return $this->hasRole(
-        self::ROLE_ADMIN_KPAP,
-        'web'
-    );
-}
+    public function isAdminKpap(): bool
+    {
+        return $this->role === self::ROLE_ADMIN_KPAP;
+    }
 }

@@ -25,14 +25,14 @@ class AuthController extends Controller
             ], 401);
         }
 
-        if (!$user->hasRole('admin_kpap', 'web')) {
+        if (!$user->isAdminKpap()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Akun ini bukan Admin KPAP.',
             ], 403);
         }
 
-        $token = $user->createToken('admin_kpap')->plainTextToken;
+        $token = $user->createToken('admin-kpap')->plainTextToken;
 
         return response()->json([
             'success' => true,
@@ -40,12 +40,7 @@ class AuthController extends Controller
             'data' => [
                 'token' => $token,
                 'token_type' => 'Bearer',
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'roles' => $user->getRoleNames(),
-                ],
+                'user' => $user->only(['id', 'name', 'email', 'role']),
             ],
         ]);
     }
@@ -64,12 +59,7 @@ class AuthController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => [
-                'id' => $request->user()->id,
-                'name' => $request->user()->name,
-                'email' => $request->user()->email,
-                'roles' => $request->user()->getRoleNames(),
-            ],
+            'data' => $request->user()->only(['id', 'name', 'email', 'role']),
         ]);
     }
 }

@@ -9,6 +9,7 @@ use App\Models\Pengajuan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Models\User;
 
 class PengajuanController extends Controller
 {
@@ -38,6 +39,7 @@ class PengajuanController extends Controller
                 'errors' => $validator->errors(),
             ], 422);
         }
+        
 
         $prefixNim = substr($request->nim, 0, 4);
 
@@ -51,6 +53,17 @@ class PengajuanController extends Controller
                 'success' => false,
                 'message' => 'Departemen tidak ditemukan.',
             ], 404);
+        }
+
+        $pengguna = $request->user();
+
+        if ($pengguna
+            && $pengguna->role === User::ROLE_ADMIN_DEPARTEMEN
+            && $pengguna->departemen_id !== $departemen->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda hanya dapat mengajukan untuk mahasiswa departemen Anda sendiri.',
+            ], 403);
         }
 
         $jenisAktif = JenisPengajuan::whereIn(
