@@ -24,10 +24,10 @@ class BerkasPengajuanController extends Controller
             ], 404);
         }
 
-        if ($pengajuan->status !== 'menunggu_verifikasi') {
+        if (!in_array($pengajuan->status, ['menunggu_verifikasi', 'perlu_revisi'], true)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Berkas hanya dapat diunggah saat pengajuan menunggu verifikasi.',
+                'message' => 'Berkas hanya dapat diunggah saat pengajuan menunggu verifikasi atau perlu revisi.',
             ], 422);
         }
 
@@ -73,21 +73,23 @@ class BerkasPengajuanController extends Controller
             ], 422);
         }
 
-        // Cegah upload ulang jika berkas sudah tersedia
-        $existingFiles = BerkasPengajuan::where(
-            'pengajuan_id',
-            $pengajuan->id
-        )->whereIn('nama_berkas', [
-            'Surat Rekomendasi',
-            'Bukti Pembayaran SPP',
-            'Surat Permohonan Izin Penelitian',
-        ])->exists();
+        // Cegah upload ulang jika berkas sudah tersedia saat status menunggu_verifikasi
+        if ($pengajuan->status === 'menunggu_verifikasi') {
+            $existingFiles = BerkasPengajuan::where(
+                'pengajuan_id',
+                $pengajuan->id
+            )->whereIn('nama_berkas', [
+                'Surat Rekomendasi',
+                'Bukti Pembayaran SPP',
+                'Surat Permohonan Izin Penelitian',
+            ])->exists();
 
-        if ($existingFiles) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Berkas pengajuan sudah pernah diunggah.',
-            ], 422);
+            if ($existingFiles) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Berkas pengajuan sudah pernah diunggah.',
+                ], 422);
+            }
         }
 
         $files = [
@@ -104,6 +106,25 @@ class BerkasPengajuanController extends Controller
                 $pengajuan,
                 &$storedPaths
             ) {
+                // Jika status perlu_revisi, bersihkan berkas lama terlebih dahulu
+                if ($pengajuan->status === 'perlu_revisi') {
+                    $oldBerkas = BerkasPengajuan::where('pengajuan_id', $pengajuan->id)->get();
+                    foreach ($oldBerkas as $old) {
+                        Storage::disk('public')->delete($old->path_berkas);
+                    }
+                    BerkasPengajuan::where('pengajuan_id', $pengajuan->id)->delete();
+
+                    $pengajuan->update(['status' => 'menunggu_verifikasi']);
+
+                    \App\Models\RiwayatPengajuan::create([
+                        'pengajuan_id' => $pengajuan->id,
+                        'aksi' => 'unggah_revisi',
+                        'status_dari' => 'perlu_revisi',
+                        'status_ke' => 'menunggu_verifikasi',
+                        'catatan' => 'Berkas perbaikan/revisi telah diunggah kembali.',
+                    ]);
+                }
+
                 $hasil = [];
 
                 foreach ($files as $namaBerkas => $file) {

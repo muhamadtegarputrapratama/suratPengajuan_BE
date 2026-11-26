@@ -48,10 +48,12 @@ return [
      * Pilihan view: 'surat.izin-penelitian' atau 'surat.permohonan-bantuan'.
      * GANTI kunci di bawah dengan kode asli dari seeder.
      */
-    'template' => [
-        // 'kode_izin_penelitian' => 'surat.izin-penelitian',
-        // 'kode_permohonan_bantuan' => 'surat.permohonan-bantuan',
-    ],
+   'template' => [
+    'PERMOHONAN_BANTUAN' => 'surat.permohonan-bantuan',
+    'PERMOHONAN_IZIN_PRAKTIK_KHUSUS' => 'surat.izin-penelitian',
+    'PENJAJAGAN' => 'surat.izin-penelitian',
+    'TUGAS_JALAN' => 'surat.izin-penelitian',
+],
 
     'disk' => 'public',
 

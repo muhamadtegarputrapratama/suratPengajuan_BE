@@ -12,4 +12,4 @@
     <p>Atas bantuan dan kerjasama yang baik diucapkan terima kasih.</p>
 
     @include('surat._ttd')
-@endsectiona
+@endsection

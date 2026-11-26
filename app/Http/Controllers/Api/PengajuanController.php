@@ -97,7 +97,7 @@ class PengajuanController extends Controller
             'nim' => ['nullable', 'string', 'regex:/^E[0-9]{10}$/'],
             'status' => [
                 'nullable',
-                'in:menunggu_verifikasi,terverifikasi,ditolak,surat_dibuat'
+                'in:menunggu_verifikasi,perlu_revisi,terverifikasi,ditolak,surat_dibuat'
             ],
             'departemen_id' => [
                 'nullable',
@@ -227,31 +227,36 @@ class PengajuanController extends Controller
 
 
     public function riwayat(Request $request)
-{
-    $validator = Validator::make($request->all(), [
-        'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
-    ]);
+    {
+        $validator = Validator::make($request->all(), [
+            'nim' => ['required', 'string', 'regex:/^E[0-9]{10}$/'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ], [
+            'nim.required' => 'NIM wajib diisi.',
+            'nim.regex' => 'NIM harus terdiri dari 11 karakter, diawali huruf E dan diikuti 10 angka.',
+        ]);
 
-    if ($validator->fails()) {
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Parameter riwayat tidak valid.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $riwayat = Pengajuan::with([
+            'departemen',
+            'jenisPengajuans',
+            'berkas',
+        ])
+        ->where('nim', $request->nim)
+        ->latest()
+        ->paginate($request->input('per_page', 10));
+
         return response()->json([
-            'success' => false,
-            'message' => 'Parameter riwayat tidak valid.',
-            'errors' => $validator->errors(),
-        ], 422);
+            'success' => true,
+            'message' => 'Riwayat pengajuan berhasil diambil.',
+            'data' => $riwayat,
+        ]);
     }
-
-    $riwayat = Pengajuan::with([
-        'departemen',
-        'jenisPengajuans',
-        'berkas',
-    ])
-    ->latest()
-    ->paginate($request->input('per_page', 10));
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Riwayat seluruh pengajuan berhasil diambil.',
-        'data' => $riwayat,
-    ]);
-}
 }
