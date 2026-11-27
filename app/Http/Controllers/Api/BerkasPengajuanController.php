@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Pengajuan;
 use App\Models\BerkasPengajuan;
+use App\Models\RiwayatPengajuan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -13,6 +14,9 @@ use Throwable;
 
 class BerkasPengajuanController extends Controller
 {
+    /** Format yang diterima: PDF, JPG/JPEG, PNG. Ukuran maksimal 5 MB (dalam KB). */
+    private const ATURAN_FILE = ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'];
+
     public function store(Request $request, $id)
     {
         $pengajuan = Pengajuan::find($id);
@@ -31,38 +35,22 @@ class BerkasPengajuanController extends Controller
             ], 422);
         }
 
-
         $validator = Validator::make($request->all(), [
-            'surat_rekomendasi' => [
-                'required',
-                'file',
-                'mimes:pdf,jpg,jpeg,png',
-                'max:2048',
-            ],
-            'bukti_spp' => [
-                'required',
-                'file',
-                'mimes:pdf,jpg,jpeg,png',
-                'max:2048',
-            ],
-                'surat_permohonan_izin_penelitian' => [
-                'required',
-                'file',
-                'mimes:pdf,jpg,jpeg,png',
-                'max:2048',
-            ],
+            'surat_rekomendasi' => self::ATURAN_FILE,
+            'bukti_spp' => self::ATURAN_FILE,
+            'surat_permohonan_izin_penelitian' => self::ATURAN_FILE,
         ], [
             'surat_rekomendasi.required' => 'Surat Rekomendasi wajib diunggah.',
             'surat_rekomendasi.mimes' => 'Surat Rekomendasi harus berformat PDF, JPG, JPEG, atau PNG.',
-            'surat_rekomendasi.max' => 'Ukuran Surat Rekomendasi maksimal 2 MB.',
+            'surat_rekomendasi.max' => 'Ukuran Surat Rekomendasi maksimal 5 MB.',
 
             'bukti_spp.required' => 'Bukti Pembayaran SPP wajib diunggah.',
             'bukti_spp.mimes' => 'Bukti Pembayaran SPP harus berformat PDF, JPG, JPEG, atau PNG.',
-            'bukti_spp.max' => 'Ukuran Bukti Pembayaran SPP maksimal 2 MB.',
+            'bukti_spp.max' => 'Ukuran Bukti Pembayaran SPP maksimal 5 MB.',
 
             'surat_permohonan_izin_penelitian.required' => 'Surat Permohonan Izin Penelitian wajib diunggah.',
             'surat_permohonan_izin_penelitian.mimes' => 'Surat Permohonan Izin Penelitian harus berformat PDF, JPG, JPEG, atau PNG.',
-            'surat_permohonan_izin_penelitian.max' => 'Ukuran Surat Permohonan Izin Penelitian maksimal 2 MB.',
+            'surat_permohonan_izin_penelitian.max' => 'Ukuran Surat Permohonan Izin Penelitian maksimal 5 MB.',
         ]);
 
         if ($validator->fails()) {
@@ -75,14 +63,12 @@ class BerkasPengajuanController extends Controller
 
         // Cegah upload ulang jika berkas sudah tersedia saat status menunggu_verifikasi
         if ($pengajuan->status === 'menunggu_verifikasi') {
-            $existingFiles = BerkasPengajuan::where(
-                'pengajuan_id',
-                $pengajuan->id
-            )->whereIn('nama_berkas', [
-                'Surat Rekomendasi',
-                'Bukti Pembayaran SPP',
-                'Surat Permohonan Izin Penelitian',
-            ])->exists();
+            $existingFiles = BerkasPengajuan::where('pengajuan_id', $pengajuan->id)
+                ->whereIn('nama_berkas', [
+                    'Surat Rekomendasi',
+                    'Bukti Pembayaran SPP',
+                    'Surat Permohonan Izin Penelitian',
+                ])->exists();
 
             if ($existingFiles) {
                 return response()->json([
@@ -101,11 +87,7 @@ class BerkasPengajuanController extends Controller
         $storedPaths = [];
 
         try {
-            $hasil = DB::transaction(function () use (
-                $files,
-                $pengajuan,
-                &$storedPaths
-            ) {
+            $hasil = DB::transaction(function () use ($files, $pengajuan, &$storedPaths) {
                 // Jika status perlu_revisi, bersihkan berkas lama terlebih dahulu
                 if ($pengajuan->status === 'perlu_revisi') {
                     $oldBerkas = BerkasPengajuan::where('pengajuan_id', $pengajuan->id)->get();
@@ -116,7 +98,7 @@ class BerkasPengajuanController extends Controller
 
                     $pengajuan->update(['status' => 'menunggu_verifikasi']);
 
-                    \App\Models\RiwayatPengajuan::create([
+                    RiwayatPengajuan::create([
                         'pengajuan_id' => $pengajuan->id,
                         'aksi' => 'unggah_revisi',
                         'status_dari' => 'perlu_revisi',
@@ -128,15 +110,10 @@ class BerkasPengajuanController extends Controller
                 $hasil = [];
 
                 foreach ($files as $namaBerkas => $file) {
-                    $path = $file->store(
-                        "pengajuan/{$pengajuan->id}",
-                        'public'
-                    );
+                    $path = $file->store("pengajuan/{$pengajuan->id}", 'public');
 
                     if (!$path) {
-                        throw new \RuntimeException(
-                            'Gagal menyimpan berkas.'
-                        );
+                        throw new \RuntimeException('Gagal menyimpan berkas.');
                     }
 
                     $storedPaths[] = $path;
@@ -158,7 +135,6 @@ class BerkasPengajuanController extends Controller
                 'message' => 'Surat Rekomendasi, Bukti Pembayaran SPP, dan Surat Permohonan Izin Penelitian berhasil diunggah.',
                 'data' => $hasil,
             ], 201);
-
         } catch (Throwable $e) {
             foreach ($storedPaths as $path) {
                 Storage::disk('public')->delete($path);
