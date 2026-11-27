@@ -18,13 +18,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        RateLimiter::for('pengajuan-public', function (Request $request) {
-            return Limit::perMinute(10)->by($request->ip());
-        });
+        Gate::define('admin-kpap', fn (User $user) => $user->role === User::ROLE_ADMIN_KPAP);
+        Gate::define('admin-departemen', fn (User $user) => $user->role === User::ROLE_ADMIN_DEPARTEMEN);
 
-        // Hak akses Admin KPAP (dipakai di route lewat middleware "can:admin-kpap")
-        Gate::define('admin-kpap', function (User $user) {
-            return $user->role === User::ROLE_ADMIN_KPAP;
+        RateLimiter::for('pengajuan-public', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
     }
 }
