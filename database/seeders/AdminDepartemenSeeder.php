@@ -25,7 +25,7 @@ class AdminDepartemenSeeder extends Seeder
         if ($departemens->isEmpty()) {
             $this->command?->warn('Tabel departemens masih kosong. Jalankan DepartemenSeeder dulu.');
 
-            return;
+            return; 
         }
 
         [$lokal, $domain] = explode('@', $dasar, 2);
